@@ -11,12 +11,18 @@ float e1_k, e1_k1, e1_k2;
 int i, PWM1, PWM2;
 int cau_hinh, che_do_1, che_do_2;
 float Setpoint1, Setpoint2;
-String SP1, SP2, pwm1;
-String KP2, KI2, KD2;
+//String SP1, SP2, pwm1;
+//String KP2, KI2, KD2;
 float kp2, ki2, kd2;
 float P2, I2, D2;
 float T_2=1;
 float e1, e2, e2l;
+
+// Biến Xử lý tín hiệu điều khiển 
+int code;
+int value;
+
+
 //CÁC THƯ VIỆN
 //BỘ LỌC KALMAN
 #include <SimpleKalmanFilter.h>
@@ -51,13 +57,67 @@ void SendString(byte instrNr2, String Wert2)
   Serial.print(Wert2);
   Serial.println('<');
 }
+void XulyABC(char abc[15]){
+    char code_s[2];
+    code_s[0] = abc[1];
+    code_s[1] = abc[2];
+    code = (int)code_s[0]*10 + (int)code_s[1];
+    value = (int)abc[4];
+}
+//Function cho Setpoint, PWM, Kp, Ki, Kd
+void ReadValue_Setpoint_PWM_Kp_Ki_kd(int ma_lenh){
+    int iter = 4;
+    string S;// tuong tu SP2 KP2
+    while(abc[iter] != '<'){
+        S += abc[iter];
+        iter++;
+    }
+
+    // Cau hinh 1
+    if ( ma_lenh == 30) {
+        PWM1 = S.toFloat();
+        //Gui tin hieu PWM 
+        SendFloat( 9, PWM1);
+    }
+    else if ( ma_lenh == 16 ){
+        Setpoint1 = S.toFloat();
+        //Gui tin hieu Setpoint 1
+        SendFloat(40, Setpoint1);
+    }
+
+    //Cau hinh 2
+    else if (ma_lenh == 32){
+        Setpoint2 = S.toFloat();
+        //Gui tin hieu Setpoint 2
+        SendFloat(40, Setpoint2);
+    }
+    else if (ma_lenh == 33){
+        kp2 = S.toFloat();
+        //Gui tin hieu Kp
+        SendFloat(9, kp2);
+    }
+    else if (ma_lenh == 34){
+        ki2 = S.toFloat();
+        //Gui tin hieu Ki
+        SendFloat(9, ki2);
+    }
+    else if (ma_lenh == 35){
+        kd2 = S.toFloat();
+        //Gui tin hieu Kp
+        SendFloat(9, kd2);
+    }
+       
+}
 //CHƯƠNG TRÌNH CON NHẬN DỮ LIỆU TỪ SERIALCOMINSTRUMENTS
 void serialEvent()
 {
   for (int i = 0; i<15;i=i+1) 
   {abc[i] = Serial.read();    
   delay(10);}
+  XulyABC(abc); ///Thêm mới
 }
+
+
 //CHƯƠNG TRÌNH HÀM NGẮT CHO CẢM BIẾN
 void flow_1 ()
 {
@@ -96,99 +156,107 @@ if(estimated_l_hour_1 > 200){
 //Lưu lượng của dòng
   SendInt (17, estimated_l_hour_1);
   SendInt (18, estimated_l_hour_1/60);
-//CẤU HÌNH THỨ NHẤT
-//Đọc công tắc cấu hình
-if ((abc[1] == '2') && (abc[2] == '4') && (abc[4] == '1')){
-    cau_hinh = 1;
-    SendString(9,"Configuration 1 - ON");
-    SendInt(11, 200);}
-if ((abc[1] == '2') && (abc[2] == '4') && (abc[4] == '0')){
-    SendInt(11,000);
-    cau_hinh = 0;}
-//Đọc chế độ điều khiển
-if ((abc[1] == '2') && (abc[2] == '5') && (abc[4] == '1')){
-    che_do_1 = 1;
-    SendString(9,"Configuration 1 - AUTO");}
-else if ((abc[1] == '2') && (abc[2] == '5') && (abc[4] == '0')){
-    che_do_1 = 0;}
-if ((abc[1] == '2') && (abc[2] == '6') && (abc[4] == '1')){
-    che_do_1 = 2;
-    SendString(40,"Configuration 1 - MANUAL");}
-else if ((abc[1] == '2') && (abc[2] == '6') && (abc[4] == '0')){
-    che_do_1 = 0;}
-//Đọc giá trị setpoint
-if ((abc[1] == '1')&& (abc[2] == '6')) {
-      i = 4;
-      while (abc[i] != '<') {
-        SP1 += abc[i]; 
-        i=i+1;  }
-      Setpoint1 = SP1.toFloat();
-      SP1 = '\n';
-      SendFloat(40,Setpoint1);}
-//Đọc giá trị PWM
-if ((abc[1] == '3')&& (abc[2] == '0')) {
-      i = 4;
-      while (abc[i] != '<') {
-        pwm1 += abc[i]; 
-        i=i+1;  }
-      PWM1 = pwm1.toFloat();
-      pwm1 = '\n';
-      SendFloat(9,PWM1);}
-//CẤU HÌNH THỨ 2
-//Đọc công tắc cấu hình
-//Đọc công tắc cấu hình
-if ((abc[1] == '2') && (abc[2] == '7') && (abc[4] == '1')){
-    cau_hinh = 1;
-    SendString(9,"Configuration 2 - ON");
-    SendInt(12, 200);}
-if ((abc[1] == '2') && (abc[2] == '7') && (abc[4] == '0')){
-    SendInt(12,000);
-    cau_hinh = 0;}
-//Đọc chế độ điều khiển
-if ((abc[1] == '2') && (abc[2] == '8') && (abc[4] == '1')){
-    che_do_2 = 1;
-    SendString(9,"Set Value - AUTO");}
-else if((abc[1] == '2') && (abc[2] == '8') && (abc[4] == '0')){
-    che_do_2 = 0;}
-if ((abc[1] == '2') && (abc[2] == '9') && (abc[4] == '1')){
-    che_do_2 = 2;
-    SendString(40,"Set Value - MANUAL");}
-else if((abc[1] == '2') && (abc[2] == '9') && (abc[4] == '0')){
-    che_do_2 = 0;}
-//Đọc giá trị setpoint
-if ((abc[1] == '3')&& (abc[2] == '2')) {
-      i = 4;
-      while (abc[i] != '<') {
-        SP2 += abc[i]; 
-        i=i+1;  }
-      Setpoint2 = SP2.toFloat();
-      SP2 = '\n';
-      SendFloat(40,Setpoint2);}
-//Đọc giá trị Kp, Ki, Kd
-if ((abc[1] == '3')&& (abc[2] == '3')) {
-      i = 4;
-      while (abc[i] != '<') {
-        KP2 += abc[i]; 
-        i=i+1;  }
-      kp2 = KP2.toFloat();
-      KP2 = '\n';
-      SendFloat(9,kp2);}  
-if ((abc[1] == '3')&& (abc[2] == '4')) {
-      i = 4;
-      while (abc[i] != '<') {
-      KI2 += abc[i]; 
-      i=i+1;  }
-     ki2 = KI2.toFloat();
-     KI2 = '\n';
-     SendFloat(9,ki2);}
-if ((abc[1] == '2')&& (abc[2] == '5')) {
-      i = 4;
-        while (abc[i] != '<') {
-        KD2 += abc[i]; 
-        i=i+1; }
-     kd2 = KD2.toFloat();
-     KD2 = '\n';
-     SendFloat(9,kd2);}
+
+
+//CÁC CẤU HÌNH
+switch(code){
+    //CẤU HÌNH THỨ NHẤT
+    case 24://Đọc công tắc cấu hình
+        if(value) {
+            cau_hinh = 1;
+            SendString(9,"Configuration 1 - ON");
+            SendInt(11, 200);
+        }
+        else{
+            SendInt(11,000);
+            cau_hinh = 0; 
+        }
+    break;
+
+    case 25://Đọc chế độ điều khiển
+        if(value){
+            che_do_1 = 1;
+            SendString(9,"Configuration 1 - AUTO");
+        }
+        else{
+          che_do_1 = 0;  
+        }
+    break;
+
+    case 26:
+        if(value){
+            che_do_1 = 2;
+            SendString(40,"Configuration 1 - MANUAL");
+        }
+        else{
+          che_do_1 = 0;  
+        }
+    break;
+
+    case 16://Đọc giá trị setpoint
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(16);
+    break;
+
+    case 30://Đọc giá trị PWM
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(30);
+    break;
+
+    //Cấu hình 2
+    
+
+    case 27://Đọc công tắc cấu hình
+        if(value){
+            cau_hinh = 1;
+            SendString(9,"Configuration 2 - ON");
+            SendInt(12, 200);
+    }
+        else{
+            SendInt(12,000);
+            cau_hinh = 0; 
+        }
+    break;
+   
+    case 28: //Đọc chế độ điều khiển
+        if(value){
+             che_do_2 = 1;
+            SendString(9,"Set Value - AUTO");
+        }
+        else{
+            che_do_2 = 0; 
+        }
+    break;
+
+    case 29:
+        if(value){
+            che_do_2 = 2;
+            SendString(40,"Set Value - MANUAL");
+        }
+        else{
+            che_do_2 = 0; 
+        }
+    break;
+
+    
+    case 32://Đọc giá trị setpoint 2
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(32);
+    break;
+
+    //Đọc giá trị Kp, Ki, Kd
+    case 33:
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(33);
+    break;
+
+    case 34:
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(34);
+    break;
+
+    case 35:
+        ReadValue_Setpoint_PWM_Kp_Ki_kd(35);
+    break;
+    
+    default: //Nếu code lỗi sẽ chạy vào TH default
+    break;
+}
 //THỰC THI CẤU HÌNH THỨ 1
 //Thực thi cấu hình thứ nhất chế độ auto
 if ((cau_hinh == 1) && (che_do_1 == 1)){
